@@ -14,14 +14,15 @@ Unfiltered_Data <- Unfiltered_Data %>%
       MinIn < 15 ~ '0',
       MinIn >= 15 & MinIn < 30 ~ '15',
       MinIn >= 30 & MinIn < 45 ~ '30',
-      MinIn >= 45 ~ '45'
-    ),
+      MinIn >= 45 ~ '45'),
     Time.Out.Grouped = case_when(
       MinOut < 15 ~ '0',
       MinOut >= 15 & MinOut < 30 ~ '15',
       MinOut >= 30 & MinOut < 45 ~ '30',
       MinOut >= 45 ~ '45'
-    )
+    ),
+    Course = factor(Course),
+    WeekDay = fct_relevel(WeekDay, c("Mon", "Tue", "Wed", "Thu", "Fri"))
   )
 
 # Density Function
@@ -93,13 +94,14 @@ Density <- function(DataSet){
     mutate(Avg.Hourly.Pop = mean(Avg.Pop))
 }
 
+
 ## DATA CREATION MIGHT NEED TO BE IN SERVER
 
-Avg_Density <- Density(Data)
+#Avg_Density <- Density(Unfiltered_Data)
 
 # Creating Vectors for Choices
 
-Courses <- c("M105Q", "M121Q", "M151Q", "M161Q", "M165Q", "M171Q", "M172Q", "M182Q", "M221", "M273Q", "M274", "STAT 216Q", "STAT 217Q")
+Courses <- c("M105", "M121", "M151", "M161", "M165", "M171", "M172", "M182", "M221", "M273", "M274", "STAT 216", "STAT 217")
 
 # Define UI
 ui <- fluidPage(
@@ -112,7 +114,8 @@ ui <- fluidPage(
                dateRangeInput("dates", 
                               "Date range",
                               start = "2022-01-24", 
-                              end = as.character(Sys.Date()))),
+                              end = as.character(Sys.Date())),
+               htmlOutput = "DateUI"),
              mainPanel()
            )),
   
@@ -140,6 +143,18 @@ ui <- fluidPage(
              )
            )),
   
+  ## Course Distribution
+  
+  tabPanel("Course Distribution",
+           sidebarLayout(
+             sidebarPanel(
+               selectInput("dist_college", "Distribution of Selected Courses", choices = NULL)
+             ),
+             mainPanel(
+               plotOutput("distribution")
+             )
+           )),
+  
   ## Tables
   
   tabPanel("Tables",
@@ -154,21 +169,33 @@ ui <- fluidPage(
 )
 
 # Define server logic
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   
-  Data <- reactive({
-    Unfiltered_Data %>%
-      filter(Date >= input$dateRange[1],
-             Date <= input$dateRange[2],
-             Courses %in% input$courses)
+## Interactive Data Filtering
+  
+ Avg_Density <- reactive({
+  Filtered_Data <- Unfiltered_Data %>%
+     filter(Course %in% input$courses,
+            Date >= input$dates[1],
+            Date <= input$dates[2])
+  Density(Filtered_Data)
   })
-
+ 
+ Filt_Data <- reactive({
+   Unfiltered_Data %>%
+     filter(Course %in% input$courses,
+            Date >= input$dates[1],
+            Date <= input$dates[2])
+   })
   
+  
+## Interactive Plot Display
+ 
   observe({
     if(input$explanatory_scatter == 'WeekDay') {
       output$scatterplot <- renderPlot({
-        Avg_Density %>%
+        Avg_Density() %>%
           ggplot(
             mapping = aes(
               x = WeekDay,
@@ -176,16 +203,15 @@ server <- function(input, output) {
             )
           ) +
           geom_boxplot() +
-          ggtitle('Average Population for Mondays and Tuesdays') +
-          labs(x = 'Time', y = 'Average Population') +
+          ggtitle('Average Population by Day of Week') +
+          labs(x = 'Day', y = 'Average Population') +
           theme_dark() +
-          scale_color_brewer() +
-          ylim(0, 80)
+          scale_color_brewer()
         
       })
     } else if(input$explanatory_scatter == 'Hour') {
       output$scatterplot <- renderPlot({
-        Avg_Density %>%
+        Avg_Density() %>%
           group_by(Hour) %>%
           ggplot(
             mapping = aes(
@@ -203,7 +229,7 @@ server <- function(input, output) {
       })
     } else if(input$explanatory_scatter == 'Time') {
       output$scatterplot <- renderPlot({
-        Avg_Density %>%
+        Avg_Density() %>%
           ggplot(
             mapping = aes(
               x = as.numeric(Time),
@@ -220,6 +246,18 @@ server <- function(input, output) {
       })
     }
   })
+  
+    output$distribution <- renderPlot({
+      Filt_Data() %>%
+        ggplot(aes(
+          x = WeekDay,
+          y = (..count..)/sum(..count..),
+          fill = Course)) +
+        geom_bar(color = 'black') +
+        ggtitle('Course Density by Day of the Week') +
+        labs(x = 'Day', y = 'Relative Frequency', subtitle = 'for Selected Courses')
+    })
+  
 }
 
 # Run the application 
