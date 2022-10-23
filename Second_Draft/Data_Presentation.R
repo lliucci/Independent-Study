@@ -5,7 +5,7 @@ library(lubridate)
 library(kableExtra)
 
 # Variable Creation
-Data <- read_csv("ShareMSCUsage2022-01-19_2022-05-27.csv")
+Data <- read_csv("../Third_Draft/ShareMSCUsage2022-01-19_2022-05-27.csv")
 
 # Grouping In/Out Times
 Data <- Data %>%
@@ -281,3 +281,8 @@ Stat.Tutor.Needs <- Total_Hourly_Density %>%
 Stat.Tutor.Needs %>%
   kable(caption = 'Average Number of Stat Tutors Needed') %>%
   kable_material(c('striped', 'hover'))
+
+
+Avg_Density %>%
+  group_by(Hour, WeekDay) %>%
+  summarize(mean(Avg.Pop))

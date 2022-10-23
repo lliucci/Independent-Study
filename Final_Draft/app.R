@@ -1,10 +1,10 @@
-setwd("/Users/eliot/Desktop/Fall 2022/Independent Study/Independent-Study/Third_Draft")
+setwd('C:/Users/eliot/Desktop/Fall 2022/Independent Study/Independent-Study/Final_Draft')
 library(shiny)
 library(tidyverse)
 library(lubridate)
 
 # Variable Creatio 
-Unfiltered_Data <- read_csv("ShareMSCUsage2022-01-19_2022-05-27.csv")
+Unfiltered_Data <- read_csv("../data/ShareMSCUsage2022-01-19_2022-05-27.csv")
 
 
 # Grouping In/Out Times
@@ -24,6 +24,8 @@ Unfiltered_Data <- Unfiltered_Data %>%
     Course = factor(Course),
     WeekDay = fct_relevel(WeekDay, c("Mon", "Tue", "Wed", "Thu", "Fri"))
   )
+
+Courses <- c("M105", "M121", "M151", "M161", "M165", "M171", "M172", "M182", "M221", "M273", "M274", "STAT 216", "STAT 217")
 
 # Density Function
 
@@ -94,121 +96,48 @@ Density <- function(DataSet){
     mutate(Avg.Hourly.Pop = mean(Avg.Pop))
 }
 
-
-
-## DATA CREATION MIGHT NEED TO BE IN SERVER
-
-#Avg_Density <- Density(Unfiltered_Data)
-
-# Creating Vectors for Choices
-
-Courses <- c("M105", "M121", "M151", "M161", "M165", "M171", "M172", "M182", "M221", "M273", "M274", "STAT 216", "STAT 217")
-
-# Define UI
 ui <- fluidPage(
-  
-  # Application title
-  titlePanel("MSC Usage"),
-  
-  titlePanel("Filtering"),
-  
-  actionButton("generate",
-               "ITS GO TIME"),  
-  
-  tabPanel("Date Range",
-           sidebarLayout(
-             sidebarPanel(
-               dateRangeInput("dates", 
-                              "Date range",
-                              start = "2022-01-24", 
-                              end = as.character(Sys.Date())),
-               htmlOutput = "DateUI"),
-             
-             mainPanel()
-           )),
-  
-  ## Course Filter
-  actionLink("selectall","Select All"),
-  
-  
-  tabPanel("Courses of Interest",
-           sidebarLayout(
-             sidebarPanel(
-               checkboxGroupInput("courses", 
-                              "Courses of Interest",
-                              choices = Courses)),
-             mainPanel()
-           )),
-  
 
-  ## Average Density
+  titlePanel("MSC Usage Analysis"),
   
-  titlePanel("Number of Students Plots"),
-  
-  tabPanel("Average Density",
-           sidebarLayout(
-             sidebarPanel(
-               selectInput("explanatory_scatter", "Average density by ______", choices = c("WeekDay", "Hour", "Time"))
-             ),
-             mainPanel(
-               plotOutput("scatterplot")
-             )
-           )),
-  
-  ## Course Distribution
-  
-  titlePanel("Distribution by Course"),
-  
-  tabPanel("Course Distribution",
-           sidebarLayout(
-             sidebarPanel(),
-             mainPanel(
-               plotOutput("distribution")
-             )
-           )),
-  
-  ## Tables
-  
-  titlePanel("Tables"),
-  
-  tabPanel("Tables",
-           sidebarLayout(
-             sidebarPanel(
-               selectInput("table", "What would you like the table to display?", choices = c("Average Students by Hour", "Average Tutors Needed by Hour"))),
-             mainPanel(
-               tableOutput("table")
-             )
-           )),
-  
-  ## Hourly Contributions
-  
-  titlePanel("Hourly Contributions"),
-  
-  tabPanel("Contributions",
-           sidebarLayout(
-             sidebarPanel(),
-             mainPanel(
-               tableOutput("contributions")
-             )
-           )),
-  
-  ## Number of Distinct Students
-  
-  titlePanel("Number of Distinct Students"),
-  
-  tabPanel("Distint Students",
-           sidebarLayout(
-             sidebarPanel(),
-             mainPanel(
-               tableOutput("distinct")
-             )
-           ))
-  
+  fluidRow(column(4,
+            wellPanel(
+              actionButton("generate", "Create Outputs", color = "white"),
+                dateRangeInput("dates", 
+                                       "Date range",
+                                       start = "2022-01-24", 
+                                       end = as.character(Sys.Date())),
+                        htmlOutput = "DateUI",
+                        checkboxGroupInput("courses", 
+                                           "Courses of Interest",
+                                           choices = Courses),
+            actionLink("selectall","Select All"))),
+           column(6,
+                  tabsetPanel(
+                    tabPanel("Student Usage",
+                             selectInput("explanatory_scatter", 
+                                         "Average density by ______", 
+                                         choices = c("Day of Week" = "WeekDay", "Hour", "15 Minute Intervals" = "Time")),
+                             plotOutput("scatterplot")),
+                    tabPanel("Distribution of Courses",
+                             plotOutput("distribution")),
+                    tabPanel("Tables",
+                             fluidRow(column(7,
+                             h6("Number of Students"),
+                             tableOutput("table1"),
+                             h6("Number of Tutors"),
+                             tableOutput("table2")),
+                             column(5,
+                             h6("Course Contributions"),
+                             tableOutput("contributions"),
+                             h6("Distinct vs. Non-Distinct Students"),
+                             tableOutput("distinct"))))
+                  )))
+
 )
 
-# Define server logic
 server <- function(input, output, session) {
-  
+
   observe({
     if(input$selectall == 0) return(NULL) 
     else if (input$selectall%%2 == 0)
@@ -227,47 +156,26 @@ server <- function(input, output, session) {
   })
   
   
-## Interactive Data Filtering
+  ## Interactive Data Filtering
   
   Avg_Density <- eventReactive(input$generate, {
     Filtered_Data <- Unfiltered_Data %>%
-        filter(Course %in% input$courses,
-               Date >= input$dates[1],
-               Date <= input$dates[2])
-      Density(Filtered_Data)
-   })
+      filter(Course %in% input$courses,
+             Date >= input$dates[1],
+             Date <= input$dates[2])
+    Density(Filtered_Data)
+  })
   
   Filt_Data <- eventReactive(input$generate, {
-        Unfiltered_Data %>%
-          filter(Course %in% input$courses,
-                 Date >= input$dates[1],
-                 Date <= input$dates[2])
-    })
-  
-
-  
-#Avg_Density <- reactive({
-#    Filtered_Data <- Unfiltered_Data %>%
-#       filter(Course %in% input$courses,
-#              Date >= input$dates[1],
-#              Date <= input$dates[2])
-#    Density(Filtered_Data)
-#   })
-# 
-#Filt_Data <- reactive({
-#   Unfiltered_Data %>%
-#     filter(Course %in% input$courses,
-#            Date >= input$dates[1],
-#            Date <= input$dates[2])
-#   })
-
-
+    Unfiltered_Data %>%
+      filter(Course %in% input$courses,
+             Date >= input$dates[1],
+             Date <= input$dates[2])
+  })
   
   
-## Interactive Plot Display
- 
- 
-
+  ## Interactive Plot Display
+  
   observe({
     if(input$explanatory_scatter == 'WeekDay') {
       output$scatterplot <- renderPlot({
@@ -297,7 +205,8 @@ server <- function(input, output, session) {
           geom_vline(mapping=NULL, xintercept=seq(9,18, 1),colour='white') +
           geom_line(size = 1.5) +
           ggtitle('Average Number of Students by Hour') +
-          labs(x = 'Time', y = 'Average Number of Students')
+          labs(x = 'Time', y = 'Average Number of Students') +
+          xlim(c(9,17))
       })
     } else if(input$explanatory_scatter == 'Time') {
       output$scatterplot <- renderPlot({
@@ -317,17 +226,17 @@ server <- function(input, output, session) {
     }
   })
   
-    output$distribution <- renderPlot({
-      if(length(input$courses) == 1){
-        Filt_Data() %>%
-          ggplot(aes(
-            x = WeekDay,
-            y = (..count..)/sum(..count..),
-            fill = Course)) +
-          geom_bar(color = 'black') +
-          ggtitle('Course Density by Day of the Week') +
-          labs(x = 'Day', y = 'Relative Frequency', subtitle = 'for Selected Courses')
-      } else {
+  output$distribution <- renderPlot({
+    if(length(input$courses) == 1){
+      Filt_Data() %>%
+        ggplot(aes(
+          x = WeekDay,
+          y = (..count..)/sum(..count..),
+          fill = Course)) +
+        geom_bar(color = 'black') +
+        ggtitle('Course Density by Day of the Week') +
+        labs(x = 'Day', y = 'Relative Frequency', subtitle = 'for Selected Courses')
+    } else {
       Filt_Data() %>%
         ggplot(aes(
           x = WeekDay,
@@ -337,48 +246,44 @@ server <- function(input, output, session) {
         ggtitle('Course Density by Day of the Week') +
         labs(x = 'Day', y = 'Relative Frequency', subtitle = 'for Selected Courses')
     }})
-    
-    observe({
-      if(input$table == "Average Students by Hour") {
-        output$table <- renderTable({
-          Avg_Density() %>%
-            group_by(Hour, WeekDay) %>%
-            summarize(Avg_Pop = mean(Avg.Pop)) %>%
-            select(Hour, Avg_Pop, WeekDay) %>%
-            mutate(Avg_Pop = round(Avg_Pop)) %>%
-            pivot_wider(
-              names_from = WeekDay,
-              values_from = Avg_Pop)
-        },
-        digits = 0)
-      } else if(input$table == "Average Tutors Needed by Hour") {
-        output$table <- renderTable({
-          Avg_Density() %>%
-            group_by(Hour, WeekDay) %>%
-            summarize(Avg_Pop = mean(Avg.Pop)) %>%
-            select(Hour, Avg_Pop, WeekDay) %>%
-            mutate(Avg_Pop = round(Avg_Pop/5)) %>%
-            pivot_wider(
-              names_from = WeekDay,
-              values_from = Avg_Pop)
-        },
-        digits = 0)
-      }
-    })
-    
-    output$contributions <- renderTable({
-      Filt_Data() %>%
-        group_by(Course) %>%
-        summarize(Total_Hours = sum(Length)/60)
-    })
-    
-    output$distinct <- renderTable({
-      Filt_Data() %>%
-        group_by(WeekDay) %>%
-        summarize(Distinct_Students = n_distinct(IDNum),
-                  Non_Distinct_Students = n())
-    })
+  
+      output$table1 <- renderTable({
+        Avg_Density() %>%
+          group_by(Hour, WeekDay) %>%
+          summarize(Avg_Pop = mean(Avg.Pop)) %>%
+          select(Hour, Avg_Pop, WeekDay) %>%
+          mutate(Avg_Pop = round(Avg_Pop)) %>%
+          pivot_wider(
+            names_from = WeekDay,
+            values_from = Avg_Pop)
+      },
+      digits = 0)
+  
+      output$table2 <- renderTable({
+        Avg_Density() %>%
+          group_by(Hour, WeekDay) %>%
+          summarize(Avg_Pop = mean(Avg.Pop)) %>%
+          select(Hour, Avg_Pop, WeekDay) %>%
+          mutate(Avg_Pop = round(Avg_Pop/5)) %>%
+          pivot_wider(
+            names_from = WeekDay,
+            values_from = Avg_Pop)
+      },
+      digits = 0)
+  
+  output$contributions <- renderTable({
+    Filt_Data() %>%
+      group_by(Course) %>%
+      summarize(Total_Hours = sum(Length)/60)
+  })
+  
+  output$distinct <- renderTable({
+    Filt_Data() %>%
+      group_by(WeekDay) %>%
+      summarize(Distinct = n_distinct(IDNum),
+                Non_Distinct = n())
+  })
+ 
 }
 
-# Run the application 
 shinyApp(ui = ui, server = server)
