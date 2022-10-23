@@ -134,11 +134,11 @@ ui <- fluidPage(
              sidebarPanel(
                checkboxGroupInput("courses", 
                               "Courses of Interest",
-                              choices = Courses,
-                              selected = Courses)),
-             actionLink("selectall","Select All"),
+                              choices = Courses)),
              mainPanel()
            )),
+  
+  actionLink("selectall","Select All"),
 
   titlePanel("Population Plots"),
   
@@ -313,20 +313,24 @@ server <- function(input, output, session) {
       if(input$table == "Average Students by Hour") {
         output$table <- renderTable({
           Avg_Density() %>%
-            select(Time, Avg.Pop, WeekDay) %>%
-            mutate(Avg.Pop = round(Avg.Pop)) %>%
+            group_by(Hour, WeekDay) %>%
+            summarize(Avg_Pop = mean(Avg.Pop)) %>%
+            select(Hour, Avg_Pop, WeekDay) %>%
+            mutate(Avg_Pop = round(Avg_Pop)) %>%
             pivot_wider(
               names_from = WeekDay,
-              values_from = Avg.Pop)
+              values_from = Avg_Pop)
         })
       } else if(input$table == "Average Tutors Needed by Hour") {
         output$table <- renderTable({
           Avg_Density() %>%
-            select(Time, Avg.Pop, WeekDay) %>%
-            mutate(Avg.Pop = round(Avg.Pop/5)) %>%
+            group_by(Hour, WeekDay) %>%
+            summarize(Avg_Pop = mean(Avg.Pop)) %>%
+            select(Hour, Avg_Pop, WeekDay) %>%
+            mutate(Avg_Pop = round(Avg_Pop/5)) %>%
             pivot_wider(
               names_from = WeekDay,
-              values_from = Avg.Pop)
+              values_from = Avg_Pop)
         })
       }
     })
