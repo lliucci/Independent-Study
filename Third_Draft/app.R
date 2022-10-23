@@ -136,6 +136,7 @@ ui <- fluidPage(
                               "Courses of Interest",
                               choices = Courses,
                               selected = Courses)),
+             actionLink("selectall","Select All"),
              mainPanel()
            )),
 
@@ -182,6 +183,23 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output, session) {
+  
+  observe({
+    if(input$selectall == 0) return(NULL) 
+    else if (input$selectall%%2 == 0)
+    {
+      updateCheckboxGroupInput(session,"courses", 
+                               "Courses of Interest",
+                               choices = Courses)
+    }
+    else
+    {
+      updateCheckboxGroupInput(session,"courses", 
+                               "Courses of Interest",
+                               choices = Courses,
+                               selected = Courses)
+    }
+  })
   
   
 ## Interactive Data Filtering
