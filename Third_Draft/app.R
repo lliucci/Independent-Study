@@ -187,21 +187,19 @@ server <- function(input, output, session) {
 ## Interactive Data Filtering
   
   Avg_Density <- eventReactive(input$generate, {
-    reactive({
-      Filtered_Data <- Unfiltered_Data %>%
+    Filtered_Data <- Unfiltered_Data %>%
         filter(Course %in% input$courses,
                Date >= input$dates[1],
                Date <= input$dates[2])
       Density(Filtered_Data)
-   })})
+   })
   
   Filt_Data <- eventReactive(input$generate, {
-      reactive({
         Unfiltered_Data %>%
           filter(Course %in% input$courses,
                  Date >= input$dates[1],
                  Date <= input$dates[2])
-    })})
+    })
   
 
   
