@@ -231,8 +231,7 @@ server <- function(input, output, session) {
       Filt_Data() %>%
         ggplot(aes(
           x = WeekDay,
-          y = (..count..)/sum(..count..),
-          fill = Course)) +
+          y = (..count..)/sum(..count..))) +
         geom_bar(color = 'black') +
         ggtitle('Course Density by Day of the Week') +
         labs(x = 'Day', y = 'Relative Frequency', subtitle = 'for Selected Courses')
