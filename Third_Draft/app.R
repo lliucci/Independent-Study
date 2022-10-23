@@ -1,4 +1,4 @@
-setwd("/Users/eliot/Desktop/Fall 2022/Independent Study/Independent-Study/Third_Draft")
+#setwd("/Users/eliot/Desktop/Fall 2022/Independent Study/Independent-Study/Third_Draft")
 library(shiny)
 library(tidyverse)
 library(lubridate)
@@ -95,6 +95,7 @@ Density <- function(DataSet){
 }
 
 
+
 ## DATA CREATION MIGHT NEED TO BE IN SERVER
 
 #Avg_Density <- Density(Unfiltered_Data)
@@ -108,6 +109,12 @@ ui <- fluidPage(
   
   # Application title
   titlePanel("MSC Usage"),
+  
+  titlePanel("Filtering"),
+  
+  actionButton("generate",
+               "ITS GO TIME"),  
+  
   tabPanel("Date Range",
            sidebarLayout(
              sidebarPanel(
@@ -116,6 +123,7 @@ ui <- fluidPage(
                               start = "2022-01-24", 
                               end = as.character(Sys.Date())),
                htmlOutput = "DateUI"),
+             
              mainPanel()
            )),
   
@@ -130,6 +138,8 @@ ui <- fluidPage(
                               selected = Courses)),
              mainPanel()
            )),
+
+  titlePanel("Population Plots"),
   
   ## Average Density
   
@@ -145,15 +155,17 @@ ui <- fluidPage(
   
   ## Course Distribution
   
+  titlePanel("Distribution by Course"),
+  
   tabPanel("Course Distribution",
            sidebarLayout(
-             sidebarPanel(
-               selectInput("dist_college", "Distribution of Selected Courses", choices = NULL)
-             ),
+             sidebarPanel(),
              mainPanel(
                plotOutput("distribution")
              )
            )),
+  
+  titlePanel("Tables"),
   
   ## Tables
   
@@ -162,7 +174,7 @@ ui <- fluidPage(
              sidebarPanel(
                selectInput("table", "What would you like the table to display?", choices = c("Average Students by Hour", "Average Tutors Needed by Hour"))),
              mainPanel(
-               
+               tableOutput("table")
              )
            ))
   
@@ -174,24 +186,47 @@ server <- function(input, output, session) {
   
 ## Interactive Data Filtering
   
- Avg_Density <- reactive({
-  Filtered_Data <- Unfiltered_Data %>%
-     filter(Course %in% input$courses,
-            Date >= input$dates[1],
-            Date <= input$dates[2])
-  Density(Filtered_Data)
-  })
- 
- Filt_Data <- reactive({
-   Unfiltered_Data %>%
-     filter(Course %in% input$courses,
-            Date >= input$dates[1],
-            Date <= input$dates[2])
-   })
+  Avg_Density <- eventReactive(input$generate, {
+    reactive({
+      Filtered_Data <- Unfiltered_Data %>%
+        filter(Course %in% input$courses,
+               Date >= input$dates[1],
+               Date <= input$dates[2])
+      Density(Filtered_Data)
+   })})
+  
+  Filt_Data <- eventReactive(input$generate, {
+      reactive({
+        Unfiltered_Data %>%
+          filter(Course %in% input$courses,
+                 Date >= input$dates[1],
+                 Date <= input$dates[2])
+    })})
+  
+
+  
+#Avg_Density <- reactive({
+#    Filtered_Data <- Unfiltered_Data %>%
+#       filter(Course %in% input$courses,
+#              Date >= input$dates[1],
+#              Date <= input$dates[2])
+#    Density(Filtered_Data)
+#   })
+# 
+#Filt_Data <- reactive({
+#   Unfiltered_Data %>%
+#     filter(Course %in% input$courses,
+#            Date >= input$dates[1],
+#            Date <= input$dates[2])
+#   })
+
+
   
   
 ## Interactive Plot Display
  
+ 
+
   observe({
     if(input$explanatory_scatter == 'WeekDay') {
       output$scatterplot <- renderPlot({
@@ -222,7 +257,7 @@ server <- function(input, output, session) {
           ) +
           geom_vline(mapping=NULL, xintercept=seq(9,18, 1),colour='grey45') +
           geom_line(size = 1.5) +
-          ggtitle('Average Population for Mondays and Tuesdays') +
+          ggtitle('Average Population by Hour') +
           labs(x = 'Time', y = 'Average Population') +
           theme_dark() +
           scale_color_brewer()
@@ -239,7 +274,7 @@ server <- function(input, output, session) {
           ) +
           geom_vline(mapping=NULL, xintercept=seq(9,18, 0.25),colour='grey45') +
           geom_line(size = 1.5) +
-          ggtitle('Average Population for Mondays and Tuesdays') +
+          ggtitle('Average Population by Time of Day') +
           labs(x = 'Time', y = 'Average Population') +
           theme_dark() +
           scale_color_brewer()
@@ -257,7 +292,28 @@ server <- function(input, output, session) {
         ggtitle('Course Density by Day of the Week') +
         labs(x = 'Day', y = 'Relative Frequency', subtitle = 'for Selected Courses')
     })
-  
+    
+    observe({
+      if(input$table == "Average Students by Hour") {
+        output$table <- renderTable({
+          Avg_Density() %>%
+            select(Time, Avg.Pop, WeekDay) %>%
+            mutate(Avg.Pop = round(Avg.Pop)) %>%
+            pivot_wider(
+              names_from = WeekDay,
+              values_from = Avg.Pop)
+        })
+      } else if(input$table == "Average Tutors Needed by Hour") {
+        output$table <- renderTable({
+          Avg_Density() %>%
+            select(Time, Avg.Pop, WeekDay) %>%
+            mutate(Avg.Pop = round(Avg.Pop/5)) %>%
+            pivot_wider(
+              names_from = WeekDay,
+              values_from = Avg.Pop)
+        })
+      }
+    })
 }
 
 # Run the application 
