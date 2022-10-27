@@ -2,6 +2,8 @@ setwd('C:/Users/eliot/Desktop/Fall 2022/Independent Study/Independent-Study/Fina
 library(shiny)
 library(tidyverse)
 library(lubridate)
+library(DT)
+library(viridis)
 
 # Variable Creatio 
 Unfiltered_Data <- read_csv("../data/ShareMSCUsage2022-01-19_2022-05-27.csv")
@@ -25,7 +27,7 @@ Unfiltered_Data <- Unfiltered_Data %>%
     WeekDay = fct_relevel(WeekDay, c("Mon", "Tue", "Wed", "Thu", "Fri"))
   )
 
-Courses <- c("M105", "M121", "M151", "M161", "M165", "M171", "M172", "M182", "M221", "M273", "M274", "STAT 216", "STAT 217")
+Courses <- levels(Unfiltered_Data$Course)
 
 # Density Function
 
@@ -97,6 +99,8 @@ Density <- function(DataSet){
 }
 
 ui <- fluidPage(
+  
+  theme = bslib::bs_theme(bootswatch = "sandstone"),
 
   titlePanel("MSC Usage Analysis"),
   
@@ -111,27 +115,38 @@ ui <- fluidPage(
                         checkboxGroupInput("courses", 
                                            "Courses of Interest",
                                            choices = Courses),
-            actionLink("selectall","Select All"))),
+            actionLink("selectall","Select All"),
+            actionLink("selectcls","Select CLS"),
+            actionLink("selectgc","Select GC"))),
            column(6,
                   tabsetPanel(
                     tabPanel("Student Usage",
                              selectInput("explanatory_scatter", 
-                                         "Average density by ______", 
+                                         "Average Number of Students by ______", 
                                          choices = c("Day of Week" = "WeekDay", "Hour", "15 Minute Intervals" = "Time")),
                              plotOutput("scatterplot")),
                     tabPanel("Distribution of Courses",
                              plotOutput("distribution")),
                     tabPanel("Tables",
-                             fluidRow(column(7,
-                             h6("Number of Students"),
-                             tableOutput("table1"),
-                             h6("Number of Tutors"),
-                             tableOutput("table2")),
-                             column(5,
-                             h6("Course Contributions"),
-                             tableOutput("contributions"),
-                             h6("Distinct vs. Non-Distinct Students"),
-                             tableOutput("distinct"))))
+                             fluidRow(
+                               column(7,
+                                h6("Average Number of Students"),
+                                tableOutput("table1")),
+                               column(5,
+                                h6("Average Number of Tutors"),
+                                tableOutput("table2"))),
+                             fluidRow(
+                               column(7, 
+                                 h6("Course Contributions"),
+                                 tableOutput("contributions")),
+                               column(5,
+                                 h6("Average Length of Stay by Class and Week"),
+                                 tableOutput("lengths"))),
+                             fluidRow(
+                               column(12,
+                                 h6("Distinct vs. Non-Distinct Students"),
+                                 tableOutput("distinct")))
+                             )
                   )))
 
 )
@@ -155,6 +170,39 @@ server <- function(input, output, session) {
     }
   })
   
+  observe({
+    if(input$selectcls == 0) return(NULL) 
+    else if (input$selectcls%%2 == 0)
+    {
+      updateCheckboxGroupInput(session,"courses", 
+                               "Courses of Interest",
+                               choices = Courses)
+    }
+    else
+    {
+      updateCheckboxGroupInput(session,"courses", 
+                               "Courses of Interest",
+                               choices = Courses,
+                               selected = c("M105", "M121", "M133", "M151", "M161", "M165", "M166", "M171", "M172", "M182", "M221", "M273", "M274", "STAT 216", "STAT 217", "STAT 332"))
+    }
+  })
+  
+  observe({
+    if(input$selectgc == 0) return(NULL) 
+    else if (input$selectgc%%2 == 0)
+    {
+      updateCheckboxGroupInput(session,"courses", 
+                               "Courses of Interest",
+                               choices = Courses)
+    }
+    else
+    {
+      updateCheckboxGroupInput(session,"courses", 
+                               "Courses of Interest",
+                               choices = Courses,
+                               selected = c("M005","M021","M063","M088","M090","M091"))
+    }
+  })
   
   ## Interactive Data Filtering
   
@@ -206,7 +254,8 @@ server <- function(input, output, session) {
           geom_line(size = 1.5) +
           ggtitle('Average Number of Students by Hour') +
           labs(x = 'Time', y = 'Average Number of Students') +
-          xlim(c(9,17))
+          xlim(c(9,17)) +
+          theme(panel.grid.minor = element_blank())
       })
     } else if(input$explanatory_scatter == 'Time') {
       output$scatterplot <- renderPlot({
@@ -273,7 +322,7 @@ server <- function(input, output, session) {
   output$contributions <- renderTable({
     Filt_Data() %>%
       group_by(Course) %>%
-      summarize(Total_Hours = sum(Length)/60)
+      summarize("Total Hours" = sum(Length)/60)
   })
   
   output$distinct <- renderTable({
@@ -281,6 +330,16 @@ server <- function(input, output, session) {
       group_by(WeekDay) %>%
       summarize(Distinct = n_distinct(IDNum),
                 Non_Distinct = n())
+  })
+  
+  output$lengths <- renderTable({
+    Filt_Data() %>%
+      group_by(WeekDay, Course) %>%
+      summarize(Avg_Stay = mean(Length)) %>%
+      pivot_wider(
+        names_from = WeekDay,
+        values_from = Avg_Stay
+      )
   })
  
 }
